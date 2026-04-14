@@ -1,0 +1,23 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: order-service
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# Service URLs
+app:
+  product-service:
+    url: http://localhost:8080
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:4200,http://localhost:5173
