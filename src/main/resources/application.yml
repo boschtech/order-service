@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: ${PORT:8081}
 
 spring:
   application:
@@ -18,6 +18,6 @@ management:
 # Service URLs
 app:
   product-service:
-    url: http://localhost:8080
+    url: ${PRODUCT_SERVICE_URL:http://localhost:8080}
   cors:
-    allowed-origins: http://localhost:3000,http://localhost:4200,http://localhost:5173
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:4200,http://localhost:5173}
