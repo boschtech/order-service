@@ -66,6 +66,15 @@ jobs:
           path: product-service
           token: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
 
+      # Required for provider pact verification — loads pact files
+      # from micro-frontend/pacts.
+      - name: Checkout micro-frontend
+        uses: actions/checkout@v4
+        with:
+          repository: boschtech/micro-frontend
+          path: micro-frontend
+          token: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -75,6 +84,17 @@ jobs:
           cache-dependency-path: |
             order-service/pom.xml
             product-service/pom.xml
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: micro-frontend/package-lock.json
+
+      - name: Generate micro-frontend Consumer Pacts
+        working-directory: micro-frontend
+        run: npm ci && npm run test:contract
 
       - name: Run Consumer Pact Tests
         working-directory: order-service
