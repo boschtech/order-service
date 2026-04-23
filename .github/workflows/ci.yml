@@ -148,13 +148,60 @@ jobs:
           path: target/surefire-reports/
 
   # ────────────────────────────────────────────────────────────
+  # Stage 3b: Code Coverage (runs in parallel with Component Tests)
+  #
+  # Runs unit + component tests with JaCoCo and enforces the 95%
+  # coverage thresholds configured in `pom.xml` (jacoco:check).
+  # Pact provider tests are excluded because they require pacts
+  # produced by other services (handled in Stage 2).
+  # The `mvn verify` goal triggers the `coverage-check` execution
+  # which fails the job — and the pipeline — if any JaCoCo metric
+  # (instruction / line / branch) drops below 95%.
+  # ────────────────────────────────────────────────────────────
+  coverage:
+    name: Code Coverage (>= 95%)
+    needs: pact-contract-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run Tests with Coverage and Enforce 95% Threshold
+        run: mvn -B verify -Dtest="*Test,*Tests,*ComponentTest,!*PactTest" -DfailIfNoTests=false
+
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            target/site/jacoco/
+            target/jacoco.exec
+          retention-days: 14
+
+      - name: Upload Surefire Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-surefire-reports
+          path: target/surefire-reports/
+
+  # ────────────────────────────────────────────────────────────
   # Stage 4: E2E Tests (@order-service) against a locally
   # deployed stack (product-service + order-service + micro-frontend)
   # running on the GitHub Actions runner.
   # ────────────────────────────────────────────────────────────
   e2e-tests:
     name: E2E Tests (@order-service)
-    needs: component-tests
+    needs: [component-tests, coverage]
     runs-on: ubuntu-latest
 
     steps:
