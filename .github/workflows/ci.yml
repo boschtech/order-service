@@ -11,6 +11,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ────────────────────────────────────────────────────────────
   # Stage 1: Unit Tests
@@ -85,10 +88,10 @@ jobs:
             order-service/pom.xml
             product-service/pom.xml
 
-      - name: Setup Node 22
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: micro-frontend/package-lock.json
 
@@ -241,10 +244,10 @@ jobs:
             order-service/pom.xml
             product-service/pom.xml
 
-      - name: Setup Node 20
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: |
             micro-frontend/package-lock.json
