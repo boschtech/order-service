@@ -3,6 +3,7 @@ package com.boschtech.orderservice.service;
 import com.boschtech.orderservice.client.ProductClient;
 import com.boschtech.orderservice.model.Order;
 import com.boschtech.orderservice.model.ProductDto;
+import com.boschtech.orderservice.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,10 +15,14 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
+
+    @Mock
+    private OrderRepository orderRepository;
 
     @Mock
     private ProductClient productClient;
@@ -26,36 +31,51 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        orderService = new OrderService(productClient);
+        orderService = new OrderService(orderRepository, productClient);
     }
 
     @Test
-    void init_shouldSeedOneOrder() {
+    void init_shouldSeedOneOrderWhenEmpty() {
+        when(orderRepository.count()).thenReturn(0L);
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
         orderService.init();
-        List<Order> orders = orderService.getAllOrders();
-        assertEquals(1, orders.size());
-        assertEquals("CONFIRMED", orders.get(0).getStatus());
+
+        verify(orderRepository).save(any(Order.class));
+    }
+
+    @Test
+    void init_shouldNotSeedWhenOrdersExist() {
+        when(orderRepository.count()).thenReturn(1L);
+
+        orderService.init();
+
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test
     void getAllOrders_shouldReturnEmptyListWhenNoOrders() {
+        when(orderRepository.findAll()).thenReturn(List.of());
+
         List<Order> orders = orderService.getAllOrders();
         assertTrue(orders.isEmpty());
     }
 
     @Test
     void getOrderById_shouldReturnOrderWhenExists() {
-        orderService.init();
-        Order seeded = orderService.getAllOrders().get(0);
+        Order order = new Order("product-1", "Test", 1, new BigDecimal("10.00"));
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
 
-        Optional<Order> found = orderService.getOrderById(seeded.getId());
+        Optional<Order> found = orderService.getOrderById(order.getId());
 
         assertTrue(found.isPresent());
-        assertEquals(seeded.getId(), found.get().getId());
+        assertEquals(order.getId(), found.get().getId());
     }
 
     @Test
     void getOrderById_shouldReturnEmptyWhenNotExists() {
+        when(orderRepository.findById("non-existent-id")).thenReturn(Optional.empty());
+
         Optional<Order> found = orderService.getOrderById("non-existent-id");
         assertTrue(found.isEmpty());
     }
@@ -68,6 +88,7 @@ class OrderServiceTest {
         product.setPrice(new BigDecimal("79.99"));
 
         when(productClient.getProductById("product-1")).thenReturn(Optional.of(product));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Order order = new Order();
         order.setProductId("product-1");
@@ -79,7 +100,7 @@ class OrderServiceTest {
         assertEquals("Wireless Keyboard", created.getProductName());
         assertEquals(0, new BigDecimal("239.97").compareTo(created.getTotalPrice()));
         assertEquals("CONFIRMED", created.getStatus());
-        assertEquals(1, orderService.getAllOrders().size());
+        verify(orderRepository).save(order);
     }
 
     @Test
@@ -96,12 +117,13 @@ class OrderServiceTest {
         );
 
         assertTrue(exception.getMessage().contains("Product not found"));
-        assertTrue(orderService.getAllOrders().isEmpty());
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test
     void getOrdersByProductId_shouldReturnMatchingOrders() {
-        orderService.init(); // seeds one order with productId "seed-product-1"
+        Order order = new Order("seed-product-1", "Sample Product", 2, new BigDecimal("159.98"));
+        when(orderRepository.findByProductId("seed-product-1")).thenReturn(List.of(order));
 
         List<Order> found = orderService.getOrdersByProductId("seed-product-1");
         assertEquals(1, found.size());
@@ -110,20 +132,21 @@ class OrderServiceTest {
 
     @Test
     void getOrdersByProductId_shouldReturnEmptyWhenNoMatch() {
-        orderService.init();
+        when(orderRepository.findByProductId("non-existent-product")).thenReturn(List.of());
 
         List<Order> found = orderService.getOrdersByProductId("non-existent-product");
         assertTrue(found.isEmpty());
     }
 
     @Test
-    void createMultipleOrders_shouldReturnAll() {
+    void createMultipleOrders_shouldSaveAll() {
         ProductDto product = new ProductDto();
         product.setId("product-1");
         product.setName("Test Product");
         product.setPrice(new BigDecimal("10.00"));
 
         when(productClient.getProductById("product-1")).thenReturn(Optional.of(product));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
 
         for (int i = 0; i < 3; i++) {
             Order order = new Order();
@@ -132,7 +155,7 @@ class OrderServiceTest {
             orderService.createOrder(order);
         }
 
-        assertEquals(3, orderService.getAllOrders().size());
+        verify(orderRepository, times(3)).save(any(Order.class));
     }
 
     @Test
@@ -143,6 +166,7 @@ class OrderServiceTest {
         product.setPrice(new BigDecimal("49.99"));
 
         when(productClient.getProductById("product-1")).thenReturn(Optional.of(product));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Order order = new Order();
         order.setProductId("product-1");

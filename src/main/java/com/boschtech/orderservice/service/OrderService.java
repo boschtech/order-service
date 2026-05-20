@@ -3,38 +3,40 @@ package com.boschtech.orderservice.service;
 import com.boschtech.orderservice.client.ProductClient;
 import com.boschtech.orderservice.model.Order;
 import com.boschtech.orderservice.model.ProductDto;
+import com.boschtech.orderservice.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class OrderService {
 
-    private final Map<String, Order> orders = new ConcurrentHashMap<>();
+    private final OrderRepository orderRepository;
     private final ProductClient productClient;
 
-    public OrderService(ProductClient productClient) {
+    public OrderService(OrderRepository orderRepository, ProductClient productClient) {
+        this.orderRepository = orderRepository;
         this.productClient = productClient;
     }
 
     @PostConstruct
     public void init() {
-        // Seed sample data (without product validation for seed data)
-        Order sample = new Order("seed-product-1", "Sample Product", 2, new BigDecimal("159.98"));
-        sample.setStatus("CONFIRMED");
-        orders.put(sample.getId(), sample);
+        if (orderRepository.count() == 0) {
+            Order sample = new Order("seed-product-1", "Sample Product", 2, new BigDecimal("159.98"));
+            sample.setStatus("CONFIRMED");
+            orderRepository.save(sample);
+        }
     }
 
     public List<Order> getAllOrders() {
-        return new ArrayList<>(orders.values());
+        return orderRepository.findAll();
     }
 
     public Optional<Order> getOrderById(String id) {
-        return Optional.ofNullable(orders.get(id));
+        return orderRepository.findById(id);
     }
 
     public Order createOrder(Order order) {
@@ -48,13 +50,10 @@ public class OrderService {
         order.setProductName(p.getName());
         order.setTotalPrice(p.getPrice().multiply(BigDecimal.valueOf(order.getQuantity())));
         order.setStatus("CONFIRMED");
-        orders.put(order.getId(), order);
-        return order;
+        return orderRepository.save(order);
     }
 
     public List<Order> getOrdersByProductId(String productId) {
-        return orders.values().stream()
-                .filter(o -> productId.equals(o.getProductId()))
-                .collect(Collectors.toList());
+        return orderRepository.findByProductId(productId);
     }
 }

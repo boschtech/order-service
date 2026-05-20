@@ -1,5 +1,9 @@
 package com.boschtech.orderservice.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -7,23 +11,32 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Entity
+@Table(name = "orders")
 public class Order {
 
+    @Id
     private String id;
 
     @NotBlank(message = "Product ID is required")
+    @Column(name = "product_id", nullable = false)
     private String productId;
 
+    @Column(name = "product_name")
     private String productName;
 
     @NotNull(message = "Quantity is required")
     @Positive(message = "Quantity must be positive")
+    @Column(nullable = false)
     private Integer quantity;
 
+    @Column(name = "total_price")
     private BigDecimal totalPrice;
 
+    @Column(nullable = false)
     private String status;
 
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     public Order() {
