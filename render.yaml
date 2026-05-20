@@ -11,3 +11,5 @@ services:
         sync: false
       - key: PRODUCT_SERVICE_URL
         sync: false
+      - key: DATABASE_URL
+        sync: false

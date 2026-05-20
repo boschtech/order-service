@@ -9,7 +9,7 @@ import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
 import com.boschtech.orderservice.client.ProductClient;
 import com.boschtech.orderservice.model.Order;
 import com.boschtech.orderservice.model.ProductDto;
-import com.boschtech.orderservice.service.OrderService;
+import com.boschtech.orderservice.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,12 +17,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -41,7 +38,7 @@ class MicroFrontendOrderProviderPactTest {
     private int port;
 
     @Autowired
-    private OrderService orderService;
+    private OrderRepository orderRepository;
 
     @MockBean
     private ProductClient productClient;
@@ -59,42 +56,37 @@ class MicroFrontendOrderProviderPactTest {
 
     @State("orders exist")
     void setupOrdersExist() {
-        Map<String, Order> orders = getOrdersMap();
-        orders.clear();
+        orderRepository.deleteAll();
 
         Order order = new Order("prod-001", "Widget Alpha", 2, new BigDecimal("59.98"));
         order.setId("order-001");
         order.setStatus("CONFIRMED");
-        orders.put(order.getId(), order);
+        orderRepository.save(order);
     }
 
     @State("order order-001 exists")
     void setupOrderExists() {
-        Map<String, Order> orders = getOrdersMap();
-        orders.clear();
+        orderRepository.deleteAll();
 
         Order order = new Order("prod-001", "Widget Alpha", 2, new BigDecimal("59.98"));
         order.setId("order-001");
         order.setStatus("CONFIRMED");
-        orders.put(order.getId(), order);
+        orderRepository.save(order);
     }
 
     @State("orders exist for product prod-001")
     void setupOrdersForProduct() {
-        Map<String, Order> orders = getOrdersMap();
-        orders.clear();
+        orderRepository.deleteAll();
 
         Order order = new Order("prod-001", "Widget Alpha", 2, new BigDecimal("59.98"));
         order.setId("order-001");
         order.setStatus("CONFIRMED");
-        orders.put(order.getId(), order);
+        orderRepository.save(order);
     }
 
     @State("product prod-001 exists and is in stock")
     void setupProductExistsForOrderCreation() {
-        // Clear existing orders so the new one can be created cleanly
-        Map<String, Order> orders = getOrdersMap();
-        orders.clear();
+        orderRepository.deleteAll();
 
         // Mock the ProductClient so order-service can validate the product
         ProductDto product = new ProductDto();
@@ -107,10 +99,5 @@ class MicroFrontendOrderProviderPactTest {
 
         when(productClient.getProductById(eq("prod-001")))
                 .thenReturn(Optional.of(product));
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Order> getOrdersMap() {
-        return (ConcurrentHashMap<String, Order>) ReflectionTestUtils.getField(orderService, "orders");
     }
 }
