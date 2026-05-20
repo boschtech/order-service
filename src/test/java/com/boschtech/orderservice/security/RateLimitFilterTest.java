@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.lang.reflect.Field;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -77,9 +79,46 @@ class RateLimitFilterTest {
     void shouldFallBackToRemoteAddrWhenXForwardedForIsBlank() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/orders");
         request.addHeader("X-Forwarded-For", "  ");
-        request.setRemoteAddr("172.16.0.1");
+        request.setRemoteAddr("**********");
         MockHttpServletResponse response = new MockHttpServletResponse();
         filter.doFilterInternal(request, response, chain);
         verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void shouldRefillTokensAfterInterval() throws Exception {
+        String clientIp = "*********";
+
+        // Exhaust all tokens
+        for (int i = 0; i < 100; i++) {
+            MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/orders");
+            req.setRemoteAddr(clientIp);
+            filter.doFilterInternal(req, new MockHttpServletResponse(), chain);
+        }
+
+        // Verify exhausted
+        MockHttpServletRequest blockedReq = new MockHttpServletRequest("GET", "/api/orders");
+        blockedReq.setRemoteAddr(clientIp);
+        MockHttpServletResponse blockedRes = new MockHttpServletResponse();
+        filter.doFilterInternal(blockedReq, blockedRes, chain);
+        assertEquals(429, blockedRes.getStatus());
+
+        // Simulate time passing via reflection
+        Field bucketsField = RateLimitFilter.class.getDeclaredField("buckets");
+        bucketsField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        var buckets = (java.util.concurrent.ConcurrentHashMap<String, ?>) bucketsField.get(filter);
+        Object bucket = buckets.get(clientIp);
+
+        Field lastRefillField = bucket.getClass().getDeclaredField("lastRefillTime");
+        lastRefillField.setAccessible(true);
+        lastRefillField.set(bucket, System.currentTimeMillis() - 61_000);
+
+        // Should succeed after refill
+        MockHttpServletRequest refreshedReq = new MockHttpServletRequest("GET", "/api/orders");
+        refreshedReq.setRemoteAddr(clientIp);
+        MockHttpServletResponse refreshedRes = new MockHttpServletResponse();
+        filter.doFilterInternal(refreshedReq, refreshedRes, chain);
+        assertEquals(200, refreshedRes.getStatus());
     }
 }
