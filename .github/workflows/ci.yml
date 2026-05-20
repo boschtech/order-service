@@ -195,7 +195,124 @@ jobs:
           path: target/surefire-reports/
 
   # ────────────────────────────────────────────────────────────
-  # Stage 4: E2E Tests (@order-service) against a locally
+  # Stage 4: Security Penetration Testing
+  # ────────────────────────────────────────────────────────────
+  security-scan:
+    name: Security Penetration Test
+    needs: [component-tests, coverage]
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: cidb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: jdbc:postgresql://localhost:5432/cidb
+      DATABASE_USERNAME: ci
+      DATABASE_PASSWORD: ci
+
+    steps:
+      - name: Checkout order-service
+        uses: actions/checkout@v5
+        with:
+          path: order-service
+
+      - name: Checkout product-service
+        uses: actions/checkout@v5
+        with:
+          repository: boschtech/product-service
+          path: product-service
+          token: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
+
+      - name: Checkout micro-frontend
+        uses: actions/checkout@v5
+        with:
+          repository: boschtech/micro-frontend
+          path: micro-frontend
+          token: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
+
+      - name: Checkout security-pentest
+        uses: actions/checkout@v5
+        with:
+          repository: boschtech/security-pentest
+          path: security-pentest
+          token: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+          cache-dependency-path: |
+            order-service/pom.xml
+            product-service/pom.xml
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            micro-frontend/package-lock.json
+            security-pentest/package-lock.json
+
+      - name: Build services and frontend
+        run: |
+          mvn -f order-service/pom.xml package -DskipTests -B -q
+          mvn -f product-service/pom.xml package -DskipTests -B -q
+          (cd micro-frontend && npm ci && VITE_PRODUCT_SERVICE_URL=http://localhost:8080 VITE_ORDER_SERVICE_URL=http://localhost:8081 npm run build)
+
+      - name: Start stack
+        env:
+          CORS_ALLOWED_ORIGINS: http://localhost:3000
+          ORDER_SERVICE_URL: http://localhost:8081
+          PRODUCT_SERVICE_URL: http://localhost:8080
+        run: |
+          nohup java -jar product-service/target/*.jar > /tmp/product.log 2>&1 &
+          nohup java -jar order-service/target/*.jar > /tmp/order.log 2>&1 &
+          nohup npx --yes serve -s micro-frontend/dist -l 3000 > /tmp/frontend.log 2>&1 &
+
+      - name: Wait for services
+        run: |
+          for url in http://localhost:8080/actuator/health http://localhost:8081/actuator/health http://localhost:3000; do
+            for i in $(seq 1 60); do curl -sf "$url" > /dev/null 2>&1 && break || sleep 2; done
+          done
+
+      - name: Install pentest dependencies
+        working-directory: security-pentest
+        run: npm ci
+
+      - name: Run Security Scan
+        working-directory: security-pentest
+        env:
+          PRODUCT_SERVICE_URL: http://localhost:8080
+          ORDER_SERVICE_URL: http://localhost:8081
+          FRONTEND_URL: http://localhost:3000
+          PENTEST_API_KEY: ${{ secrets.API_KEY || 'changeme-dev-only' }}
+        run: npm run scan
+
+      - name: Upload Security Report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: security-pentest-report
+          path: security-pentest/reports/
+          retention-days: 30
+
+  # ────────────────────────────────────────────────────────────
+  # Stage 5: E2E Tests (@order-service) against a locally
   # deployed stack (product-service + order-service + micro-frontend)
   # running on the GitHub Actions runner.
   # ────────────────────────────────────────────────────────────
@@ -203,6 +320,26 @@ jobs:
     name: E2E Tests (@order-service)
     needs: [component-tests, coverage]
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: cidb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: jdbc:postgresql://localhost:5432/cidb
+      DATABASE_USERNAME: ci
+      DATABASE_PASSWORD: ci
 
     steps:
       - name: Checkout order-service
