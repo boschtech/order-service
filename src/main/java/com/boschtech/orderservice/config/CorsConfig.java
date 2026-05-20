@@ -20,7 +20,7 @@ public class CorsConfig {
                 registry.addMapping("/api/**")
                         .allowedOrigins(allowedOrigins.split(","))
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedHeaders("*");
+                        .allowedHeaders("Content-Type", "X-API-Key", "Accept");
             }
         };
     }

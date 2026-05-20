@@ -21,13 +21,15 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
 
 app:
   product-service:
     url: http://localhost:8080
   cors:
     allowed-origins: http://localhost:3000,http://localhost:4200,http://localhost:5173
+  security:
+    api-key: test-api-key-for-tests

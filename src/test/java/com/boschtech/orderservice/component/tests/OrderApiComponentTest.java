@@ -31,6 +31,8 @@ import static org.mockito.Mockito.when;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class OrderApiComponentTest {
 
+    private static final String API_KEY = "test-api-key-for-tests";
+
     @Autowired
     private WebTestClient webTestClient;
 
@@ -83,6 +85,7 @@ class OrderApiComponentTest {
 
         webTestClient.post()
                 .uri("/api/orders")
+                .header("X-API-Key", API_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(json)
                 .exchange()
@@ -126,6 +129,7 @@ class OrderApiComponentTest {
 
         webTestClient.post()
                 .uri("/api/orders")
+                .header("X-API-Key", API_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(json)
                 .exchange()
@@ -144,6 +148,7 @@ class OrderApiComponentTest {
 
         webTestClient.post()
                 .uri("/api/orders")
+                .header("X-API-Key", API_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(json)
                 .exchange()
@@ -162,6 +167,7 @@ class OrderApiComponentTest {
 
         webTestClient.post()
                 .uri("/api/orders")
+                .header("X-API-Key", API_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(json)
                 .exchange()
@@ -180,6 +186,7 @@ class OrderApiComponentTest {
 
         webTestClient.post()
                 .uri("/api/orders")
+                .header("X-API-Key", API_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(json)
                 .exchange()
@@ -277,6 +284,7 @@ class OrderApiComponentTest {
         // CREATE
         Order created = webTestClient.post()
                 .uri("/api/orders")
+                .header("X-API-Key", API_KEY)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""
                         {

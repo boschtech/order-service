@@ -1,12 +1,14 @@
 package com.boschtech.orderservice.controller;
 
 import com.boschtech.orderservice.model.Order;
+import com.boschtech.orderservice.security.SecurityConfig;
 import com.boschtech.orderservice.service.OrderService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,7 +22,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(OrderController.class)
+@Import(SecurityConfig.class)
 class OrderControllerTest {
+
+    private static final String API_KEY = "test-api-key-for-tests";
 
     @Autowired
     private MockMvc mockMvc;
@@ -92,10 +97,32 @@ class OrderControllerTest {
         String json = objectMapper.writeValueAsString(order);
 
         mockMvc.perform(post("/api/orders")
+                        .header("X-API-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.productName").value("Wireless Keyboard"));
+    }
+
+    @Test
+    void createOrder_shouldReturn401WhenNoApiKey() throws Exception {
+        Order order = createTestOrder();
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(order)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void createOrder_shouldReturn401WhenInvalidApiKey() throws Exception {
+        Order order = createTestOrder();
+
+        mockMvc.perform(post("/api/orders")
+                        .header("X-API-Key", "wrong-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(order)))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -105,6 +132,7 @@ class OrderControllerTest {
         order.setQuantity(1);
 
         mockMvc.perform(post("/api/orders")
+                        .header("X-API-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(order)))
                 .andExpect(status().isBadRequest());
@@ -117,6 +145,7 @@ class OrderControllerTest {
         order.setQuantity(null);
 
         mockMvc.perform(post("/api/orders")
+                        .header("X-API-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(order)))
                 .andExpect(status().isBadRequest());
@@ -129,6 +158,7 @@ class OrderControllerTest {
         order.setQuantity(-1);
 
         mockMvc.perform(post("/api/orders")
+                        .header("X-API-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(order)))
                 .andExpect(status().isBadRequest());
@@ -141,6 +171,7 @@ class OrderControllerTest {
         order.setQuantity(0);
 
         mockMvc.perform(post("/api/orders")
+                        .header("X-API-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(order)))
                 .andExpect(status().isBadRequest());
@@ -156,6 +187,7 @@ class OrderControllerTest {
         order.setQuantity(1);
 
         mockMvc.perform(post("/api/orders")
+                        .header("X-API-Key", API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(order)))
                 .andExpect(status().isBadRequest());

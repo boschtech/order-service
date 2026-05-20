@@ -15,8 +15,12 @@ import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -28,11 +32,27 @@ import static org.mockito.Mockito.when;
  * Provider verification test: order-service verifies it satisfies
  * the contract defined by the micro-frontend (the consumer).
  * Loads pact from micro-frontend's pacts directory.
+ *
+ * Security is disabled for pact verification — contracts test
+ * request/response shape, not authentication.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "spring.main.allow-bean-definition-overriding=true"
+)
 @Provider("order-service")
 @PactFolder("../micro-frontend/pacts")
 class MicroFrontendOrderProviderPactTest {
+
+    @TestConfiguration
+    static class PactSecurityOverride {
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+            http.csrf(csrf -> csrf.disable())
+                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+            return http.build();
+        }
+    }
 
     @LocalServerPort
     private int port;
