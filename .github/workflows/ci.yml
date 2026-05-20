@@ -272,7 +272,7 @@ jobs:
         run: |
           mvn -f order-service/pom.xml package -DskipTests -B -q
           mvn -f product-service/pom.xml package -DskipTests -B -q
-          (cd micro-frontend && npm ci && VITE_PRODUCT_SERVICE_URL=http://localhost:8080 VITE_ORDER_SERVICE_URL=http://localhost:8081 npm run build)
+          (cd micro-frontend && npm ci && VITE_PRODUCT_SERVICE_URL=http://localhost:8080 VITE_ORDER_SERVICE_URL=http://localhost:8081 VITE_API_KEY=${API_KEY:-changeme-dev-only} npm run build)
 
       - name: Start stack
         env:
@@ -404,6 +404,7 @@ jobs:
         env:
           VITE_PRODUCT_SERVICE_URL: http://localhost:8080
           VITE_ORDER_SERVICE_URL: http://localhost:8081
+          VITE_API_KEY: ${{ secrets.API_KEY || 'changeme-dev-only' }}
         run: npm run build
 
       - name: Start product-service
