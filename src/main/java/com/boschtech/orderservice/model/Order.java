@@ -4,18 +4,19 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.UuidGenerator;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "orders")
 public class Order {
 
     @Id
+    @UuidGenerator
     private String id;
 
     @NotBlank(message = "Product ID is required")
@@ -40,7 +41,6 @@ public class Order {
     private LocalDateTime createdAt;
 
     public Order() {
-        this.id = UUID.randomUUID().toString();
         this.status = "PENDING";
         this.createdAt = LocalDateTime.now();
     }

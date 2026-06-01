@@ -10,19 +10,18 @@ import static org.junit.jupiter.api.Assertions.*;
 class OrderTest {
 
     @Test
-    void defaultConstructor_shouldGenerateIdAndSetDefaults() {
+    void defaultConstructor_shouldSetDefaultsWithNullId() {
         Order order = new Order();
-        assertNotNull(order.getId());
-        assertFalse(order.getId().isEmpty());
+        assertNull(order.getId());
         assertEquals("PENDING", order.getStatus());
         assertNotNull(order.getCreatedAt());
     }
 
     @Test
-    void parameterizedConstructor_shouldSetAllFields() {
+    void parameterizedConstructor_shouldSetAllFieldsExceptId() {
         Order order = new Order("product-1", "Keyboard", 2, new BigDecimal("159.98"));
 
-        assertNotNull(order.getId());
+        assertNull(order.getId());
         assertEquals("product-1", order.getProductId());
         assertEquals("Keyboard", order.getProductName());
         assertEquals(2, order.getQuantity());
@@ -54,9 +53,10 @@ class OrderTest {
     }
 
     @Test
-    void twoOrders_shouldHaveDifferentIds() {
+    void idIsNullBeforePersistence() {
         Order o1 = new Order();
         Order o2 = new Order();
-        assertNotEquals(o1.getId(), o2.getId());
+        assertNull(o1.getId());
+        assertNull(o2.getId());
     }
 }
