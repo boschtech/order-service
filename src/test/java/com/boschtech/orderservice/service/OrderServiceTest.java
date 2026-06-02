@@ -159,6 +159,47 @@ class OrderServiceTest {
     }
 
     @Test
+    void createOrder_shouldNullifyBlankId() {
+        ProductDto product = new ProductDto();
+        product.setId("product-1");
+        product.setName("Test Product");
+        product.setPrice(new BigDecimal("10.00"));
+
+        when(productClient.getProductById("product-1")).thenReturn(Optional.of(product));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order order = new Order();
+        order.setProductId("product-1");
+        order.setQuantity(1);
+        order.setId("   ");
+
+        Order created = orderService.createOrder(order);
+
+        assertNull(created.getId());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void createOrder_shouldPreserveNonBlankId() {
+        ProductDto product = new ProductDto();
+        product.setId("product-1");
+        product.setName("Test Product");
+        product.setPrice(new BigDecimal("10.00"));
+
+        when(productClient.getProductById("product-1")).thenReturn(Optional.of(product));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order order = new Order();
+        order.setProductId("product-1");
+        order.setQuantity(1);
+        order.setId("explicit-id");
+
+        Order created = orderService.createOrder(order);
+
+        assertEquals("explicit-id", created.getId());
+    }
+
+    @Test
     void createOrder_shouldCalculateTotalPriceCorrectly() {
         ProductDto product = new ProductDto();
         product.setId("product-1");

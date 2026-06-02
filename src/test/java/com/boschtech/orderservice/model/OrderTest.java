@@ -59,4 +59,34 @@ class OrderTest {
         assertNull(o1.getId());
         assertNull(o2.getId());
     }
+
+    @Test
+    void ensureId_shouldGenerateUuidWhenIdIsNull() {
+        Order order = new Order();
+        assertNull(order.getId());
+
+        order.ensureId();
+
+        assertNotNull(order.getId());
+        assertFalse(order.getId().isEmpty());
+    }
+
+    @Test
+    void ensureId_shouldPreserveExistingId() {
+        Order order = new Order();
+        order.setId("custom-id");
+
+        order.ensureId();
+
+        assertEquals("custom-id", order.getId());
+    }
+
+    @Test
+    void ensureId_shouldGenerateUniqueIds() {
+        Order o1 = new Order();
+        Order o2 = new Order();
+        o1.ensureId();
+        o2.ensureId();
+        assertNotEquals(o1.getId(), o2.getId());
+    }
 }
