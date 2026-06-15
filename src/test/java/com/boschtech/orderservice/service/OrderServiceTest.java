@@ -64,12 +64,13 @@ class OrderServiceTest {
     @Test
     void getOrderById_shouldReturnOrderWhenExists() {
         Order order = new Order("product-1", "Test", 1, new BigDecimal("10.00"));
-        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        order.setId("test-order-id");
+        when(orderRepository.findById("test-order-id")).thenReturn(Optional.of(order));
 
-        Optional<Order> found = orderService.getOrderById(order.getId());
+        Optional<Order> found = orderService.getOrderById("test-order-id");
 
         assertTrue(found.isPresent());
-        assertEquals(order.getId(), found.get().getId());
+        assertEquals("test-order-id", found.get().getId());
     }
 
     @Test
@@ -96,7 +97,6 @@ class OrderServiceTest {
 
         Order created = orderService.createOrder(order);
 
-        assertNotNull(created.getId());
         assertEquals("Wireless Keyboard", created.getProductName());
         assertEquals(0, new BigDecimal("239.97").compareTo(created.getTotalPrice()));
         assertEquals("CONFIRMED", created.getStatus());
@@ -156,6 +156,47 @@ class OrderServiceTest {
         }
 
         verify(orderRepository, times(3)).save(any(Order.class));
+    }
+
+    @Test
+    void createOrder_shouldNullifyBlankId() {
+        ProductDto product = new ProductDto();
+        product.setId("product-1");
+        product.setName("Test Product");
+        product.setPrice(new BigDecimal("10.00"));
+
+        when(productClient.getProductById("product-1")).thenReturn(Optional.of(product));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order order = new Order();
+        order.setProductId("product-1");
+        order.setQuantity(1);
+        order.setId("   ");
+
+        Order created = orderService.createOrder(order);
+
+        assertNull(created.getId());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void createOrder_shouldPreserveNonBlankId() {
+        ProductDto product = new ProductDto();
+        product.setId("product-1");
+        product.setName("Test Product");
+        product.setPrice(new BigDecimal("10.00"));
+
+        when(productClient.getProductById("product-1")).thenReturn(Optional.of(product));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order order = new Order();
+        order.setProductId("product-1");
+        order.setQuantity(1);
+        order.setId("explicit-id");
+
+        Order created = orderService.createOrder(order);
+
+        assertEquals("explicit-id", created.getId());
     }
 
     @Test

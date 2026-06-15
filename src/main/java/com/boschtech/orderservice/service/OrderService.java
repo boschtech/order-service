@@ -49,6 +49,9 @@ public class OrderService {
         ProductDto p = product.get();
         order.setProductName(p.getName());
         order.setTotalPrice(p.getPrice().multiply(BigDecimal.valueOf(order.getQuantity())));
+        if (order.getId() != null && order.getId().isBlank()) {
+            order.setId(null);
+        }
         order.setStatus("CONFIRMED");
         return orderRepository.save(order);
     }
