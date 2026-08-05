@@ -86,6 +86,66 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void shouldDefaultToOneHundredRequestsPerMinute() {
+        assertEquals(100, new RateLimitFilter().getRequestsPerMinute());
+    }
+
+    @Test
+    void shouldEnforceCustomConfiguredLimit() throws Exception {
+        RateLimitFilter limitedFilter = new RateLimitFilter(3);
+        String clientIp = "***********";
+
+        assertEquals(3, limitedFilter.getRequestsPerMinute());
+
+        for (int i = 0; i < 3; i++) {
+            MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/orders");
+            req.setRemoteAddr(clientIp);
+            MockHttpServletResponse res = new MockHttpServletResponse();
+            limitedFilter.doFilterInternal(req, res, chain);
+            assertEquals(200, res.getStatus(), "request " + (i + 1) + " should be allowed");
+        }
+
+        MockHttpServletRequest blocked = new MockHttpServletRequest("GET", "/api/orders");
+        blocked.setRemoteAddr(clientIp);
+        MockHttpServletResponse blockedRes = new MockHttpServletResponse();
+        limitedFilter.doFilterInternal(blocked, blockedRes, chain);
+
+        assertEquals(429, blockedRes.getStatus());
+        assertTrue(blockedRes.getContentAsString().contains("Rate limit exceeded"));
+    }
+
+    @Test
+    void shouldNotRateLimitActuatorEndpoints() throws Exception {
+        RateLimitFilter limitedFilter = new RateLimitFilter(1);
+        String clientIp = "***********";
+
+        // Consume the single available token with an API request.
+        MockHttpServletRequest apiRequest = new MockHttpServletRequest("GET", "/api/orders");
+        apiRequest.setRemoteAddr(clientIp);
+        MockHttpServletResponse apiResponse = new MockHttpServletResponse();
+        limitedFilter.doFilterInternal(apiRequest, apiResponse, chain);
+        assertEquals(200, apiResponse.getStatus());
+
+        // Health polling must never be throttled, even from an exhausted client IP.
+        for (int i = 0; i < 5; i++) {
+            MockHttpServletRequest healthRequest = new MockHttpServletRequest("GET", "/actuator/health");
+            healthRequest.setRemoteAddr(clientIp);
+            MockHttpServletResponse healthResponse = new MockHttpServletResponse();
+            limitedFilter.doFilterInternal(healthRequest, healthResponse, chain);
+
+            verify(chain).doFilter(healthRequest, healthResponse);
+            assertEquals(200, healthResponse.getStatus());
+        }
+
+        // API traffic from the same IP is still limited.
+        MockHttpServletRequest blocked = new MockHttpServletRequest("GET", "/api/orders");
+        blocked.setRemoteAddr(clientIp);
+        MockHttpServletResponse blockedRes = new MockHttpServletResponse();
+        limitedFilter.doFilterInternal(blocked, blockedRes, chain);
+        assertEquals(429, blockedRes.getStatus());
+    }
+
+    @Test
     void shouldRefillTokensAfterInterval() throws Exception {
         String clientIp = "*********";
 
