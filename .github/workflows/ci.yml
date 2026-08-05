@@ -410,6 +410,12 @@ jobs:
         env:
           CORS_ALLOWED_ORIGINS: http://localhost:3000
           ORDER_SERVICE_URL: http://localhost:8081
+          # Every Playwright worker hits the services from the same runner IP, so the
+          # default 100 req/min per-IP bucket is exhausted mid-suite (429s instead of
+          # 200s). Effectively disable the limiter for E2E only. The Security
+          # Penetration Test job deliberately keeps the default so its 120-request
+          # burst still observes a 429.
+          RATE_LIMIT_RPM: '100000'
         run: |
           nohup java -jar target/*.jar > product-service.log 2>&1 &
           echo $! > /tmp/product-service.pid
@@ -419,6 +425,7 @@ jobs:
         env:
           CORS_ALLOWED_ORIGINS: http://localhost:3000
           PRODUCT_SERVICE_URL: http://localhost:8080
+          RATE_LIMIT_RPM: '100000'
         run: |
           nohup java -jar target/*.jar > order-service.log 2>&1 &
           echo $! > /tmp/order-service.pid
